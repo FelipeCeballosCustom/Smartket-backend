@@ -1,0 +1,20 @@
+# Backend
+fastapi
+uvicorn
+python-multipart
+pytesseract
+opencv-python
+pandas
+openpyxl
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+
+# Frontend (React)
+axios
+react-router-dom
+@mui/material
+@emotion/react
+@emotion/styled
+react-plotly.js
+plotly.js
