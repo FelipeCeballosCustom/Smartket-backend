@@ -14,6 +14,28 @@ python -m venv venv
  NOTA: antes de cualquier commit revisar que este la carpeta /venv dentro del archivo .gitgnore
 
 
+NOTA MUY IMPORTANTE: si te sale el error Import "pytesseract" could not be resolvedPylancereportMissingImports  con cualquier dependencia, 
+                    solucionalo buscando en el buscador de arriba en visual studio select interpreter > escoger el que contiene .venv 
+
+
+************************************************************************************************
+
+CORRER EL PROYECTO CON O SIN ABRIR CODE
+1. Abre PowerShell y navega a:
+cd C:\Users\user\Desktop\smartket\hackaton\Smartket-backend
+2. Activa el entorno virtual (si no está activo):
+..\venv\Scripts\Activate.ps1
+3. Ejecuta:
+.\run.ps1
+
+abrir el link en el navegador 
+http://127.0.0.1:8000/docs
+
+************************************************************************************************
+
+
+
+
  RESUMEN DE ERRORES Y SOLUCIONES EN LA CONFIGURACIÓN DE PYTHON + FASTAPI + TESSERACT EN WINDOWS
 ---------------------------------------------------------------------------------------------
 
