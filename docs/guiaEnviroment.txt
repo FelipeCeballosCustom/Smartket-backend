@@ -1,0 +1,89 @@
+python --version
+pip --version
+python -m venv venv
+ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+ .\venv\Scripts\Activate.ps1
+  python.exe -m pip install --upgrade pip
+ pip install -r requirements.txt
+ ls
+ cd smartket-backend
+ cd backend
+ copiar lo que hay dependencias.txt a el archivo requirements.txt
+ pip install -r requirements.txt
+
+ NOTA: antes de cualquier commit revisar que este la carpeta /venv dentro del archivo .gitgnore
+
+
+ RESUMEN DE ERRORES Y SOLUCIONES EN LA CONFIGURACIÓN DE PYTHON + FASTAPI + TESSERACT EN WINDOWS
+---------------------------------------------------------------------------------------------
+
+1. ❌ ERROR: "python no se reconoce como un comando interno o externo"
+   ▶️ CAUSA: Python no está instalado o no está en el PATH
+   ✅ SOLUCIÓN:
+     - Descargar Python desde https://www.python.org/downloads/windows/
+     - En el instalador, seleccionar:
+         [x] Add Python to PATH
+         [x] pip
+         [x] venv
+     - Instalar para todos los usuarios si es posible
+     - Verificar:
+         python --version
+         pip --version
+
+2. ❌ ERROR: "pip no se reconoce como un comando"
+   ▶️ CAUSA: pip no se instaló correctamente o no está en PATH
+   ✅ SOLUCIÓN:
+     - Descargar get-pip.py: https://bootstrap.pypa.io/get-pip.py
+     - Ejecutar:
+         python get-pip.py
+     - Verificar con:
+         pip --version
+
+3. ❌ ERROR: No se puede crear entorno virtual (venv)
+   ▶️ CAUSA: Python está incompleto o sin ensurepip
+   ✅ SOLUCIÓN:
+     - Reinstalar Python asegurando marcar:
+         [x] pip
+         [x] venv
+         [x] ensurepip
+
+4. ❌ ERROR: No se puede ejecutar Activate.ps1 (restricción de seguridad)
+   ▶️ CAUSA: Política de PowerShell bloquea scripts
+   ✅ SOLUCIÓN:
+     - Ejecutar en PowerShell:
+         Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+     - Luego:
+         .\venv\Scripts\Activate.ps1
+
+5. ❌ ERROR: "requirements.txt not found"
+   ▶️ CAUSA: No estás en la carpeta correcta o el archivo se llama diferente
+   ✅ SOLUCIÓN:
+     - Verificar con:
+         ls
+     - entrar a ala carpeta backend
+	 cd backend
+     - Luego instalar:
+         pip install -r requirements.txt
+
+6. ❌ ERROR: Tesseract no se encuentra o no funciona
+   ▶️ CAUSA: No instalado o no está en PATH
+   ✅ SOLUCIÓN:
+     - Descargar desde: https://github.com/UB-Mannheim/tesseract/wiki
+     - Agregar a PATH:
+         C:\Program Files\Tesseract-OCR\
+     - Verificar:
+         tesseract --version
+     - Si usas pytesseract, especifica:
+         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+7.CREAR EL ENTORNO
+	 python -m venv venv
+
+
+8. ✅ PARA CORRER EL PROYECTO:
+   - Activar entorno:
+       .\venv\Scripts\Activate.ps1
+   - Instalar dependencias:
+       pip install -r requirements.txt
+   - Ejecutar FastAPI:
+       uvicorn app.main:app --reload
