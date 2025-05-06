@@ -1,3 +1,4 @@
+
 # app/ocr.py
 
 from fastapi import APIRouter, UploadFile, File
@@ -72,7 +73,7 @@ CATEGORIAS = {
         "pez tilapia", "filete de tilapia", "mojarra roja", "trucha", "salmón fresco",
         "atún fresco", "bagre", "filete de pescado", "pescado apanado", "pescado entero",
         "bacalao", "sardina", "corvina", "camarones", "calamares",
-        "pulpitos", "langostinos", "anillas de calamar", "pescado ahumado", "filete de salmón"
+        "pulpitos", "langostinos", "anillos de calamar", "pescado ahumado", "filete de salmón"
     ],
     "ropa hombre": [
         "camisa", "camiseta", "pantalón", "chaqueta", "bóxer",
@@ -157,3 +158,110 @@ async def procesar_factura(file: UploadFile = File(...)):
         },
         "items": productos
     }
+
+
+'''
+# app/ocr.py
+
+from fastapi import APIRouter, UploadFile, File
+from typing import List
+import pytesseract
+import pandas as pd
+import cv2
+import numpy as np
+import re
+from io import BytesIO
+from PIL import Image
+
+router = APIRouter()
+
+# Diccionario de categorias para clasificar los productos
+CATEGORIAS = {
+    "lácteos": [...],  # Se omiten para brevedad
+    "aseo": [...],
+    "licores": [...],
+    "cosméticos": [...],
+    "bebida sin alcohol": [...],
+    "frutas": [...],
+    "verduras": [...],
+    "carnes rojas": [...],
+    "carnes blancas": [...],
+    "ropa hombre": [...],
+    "ropa mujer": [...],
+    "ropa infantil": [...],
+    "accesorios": [...],
+    "otros": []
+}
+
+# Función auxiliar para clasificar un producto por nombre
+def clasificar_producto(nombre):
+    nombre = nombre.lower()
+    for categoria, palabras in CATEGORIAS.items():
+        for palabra in palabras:
+            if palabra in nombre:
+                return categoria
+    return "otros"
+
+# Expresión regular para fecha
+FECHA_REGEX = r"(\d{2,4}[/-]\d{1,2}[/-]\d{1,2})"
+
+import traceback
+
+@router.post("/upload-factura")
+async def procesar_factura(file: UploadFile = File(...)):
+    try:
+        image_bytes = await file.read()
+        image = Image.open(BytesIO(image_bytes))
+        image_np = np.array(image)
+
+        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        texto = pytesseract.image_to_string(gray, lang='spa')
+
+        print("=== TEXTO DETECTADO ===")
+        print(texto)
+        print("=======================")
+
+        fecha_match = re.search(FECHA_REGEX, texto)
+        fecha = fecha_match.group(0) if fecha_match else "desconocida"
+
+        productos = []
+        total = 0
+        ITEM_REGEX = re.compile(r"^(\d+)?\s*([A-ZÁÉÍÓÚÑ/\-\s]+?)\s*T?1?\s*\$?([\d,.]+)$")
+
+        for linea in texto.split("\n"):
+            linea = linea.strip()
+            print("Analizando línea:", linea)
+            match = ITEM_REGEX.match(linea)
+            if match:
+                try:
+                    cantidad_str, nombre, precio = match.groups()
+                    cantidad = int(cantidad_str) if cantidad_str else 1
+                    precio_total = float(precio.replace(".", "").replace(",", "."))
+                    precio_unitario = precio_total / cantidad
+                    categoria = clasificar_producto(nombre)
+                    productos.append({
+                        "producto": nombre.strip(),
+                        "cantidad": cantidad,
+                        "precio_unitario": round(precio_unitario, 2),
+                        "precio_total": round(precio_total, 2),
+                        "categoria": categoria
+                    })
+                    total += precio_total
+                except Exception as e:
+                    print("Error procesando producto:", e)
+                    continue
+
+        return {
+            "factura": {
+                "fecha": fecha,
+                "total": round(total, 2),
+                "proveedor": "por definir"
+            },
+            "items": productos
+        }
+
+    except Exception as e:
+        print("ERROR GENERAL:", e)
+        traceback.print_exc()
+        return {"error": "Error procesando la factura"}
+'''
