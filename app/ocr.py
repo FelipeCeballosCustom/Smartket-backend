@@ -559,10 +559,25 @@ def obtener_datos_ocr():
 # ---------- 3. Guarda la versión editada definitiva ----------
 @router.post("/factura/guardar")
 def guardar_edicion(items: List[ProductoEditado]):
-    df = pd.DataFrame([item.dict() for item in items])
-    df.to_excel(ARCHIVO_EXCEL, index=False)
+    df_nuevo = pd.DataFrame([item.dict() for item in items])
+
+    # Si el archivo ya existe, leerlo y concatenar
+    if os.path.exists(ARCHIVO_EXCEL):
+        try:
+            df_existente = pd.read_excel(ARCHIVO_EXCEL)
+            df_final = pd.concat([df_existente, df_nuevo], ignore_index=True)
+        except Exception as e:
+            return {"error": f"No se pudo leer el Excel existente: {e}"}
+    else:
+        df_final = df_nuevo
+
+    try:
+        df_final.to_excel(ARCHIVO_EXCEL, index=False)
+    except Exception as e:
+        return {"error": f"No se pudo guardar el archivo: {e}"}
 
     if os.path.exists(TEMP_JSON):
         os.remove(TEMP_JSON)
 
-    return {"mensaje": "Factura guardada exitosamente en Excel"}
+    return {"mensaje": f"{len(items)} ítems agregados al histórico de facturas"}
+
