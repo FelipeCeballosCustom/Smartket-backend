@@ -1,15 +1,11 @@
-
-# app/ocr.py
-
 from fastapi import APIRouter, UploadFile, File
-from typing import List
 import pytesseract
-import pandas as pd
 import cv2
 import numpy as np
 import re
 from io import BytesIO
 from PIL import Image
+import traceback
 
 router = APIRouter()
 
@@ -25,7 +21,7 @@ CATEGORIAS = {
         "jabón", "detergente", "suavizante", "cloro", "limpiavidrios",
         "desinfectante", "cepillo", "escoba", "trapeador", "esponja",
         "guantes", "limpiador multiusos", "desengrasante", "bolsas de basura", "papel higiénico",
-        "toallas húmedas", "lavaplatos", "ambientador", "limpiador de pisos", "cepillo de baño"
+        "toallas húmedas", "lavaplatos", "ambientador", "limpiador de pisos", "cepillo de baño", "suavitel"
     ],
     "licores": [
         "cerveza", "vino tinto", "vino blanco", "ron", "aguardiente",
@@ -43,7 +39,7 @@ CATEGORIAS = {
         "agua", "jugo", "gaseosa", "té helado", "bebida energética",
         "agua saborizada", "limonada", "malteada", "bebida hidratante", "té verde",
         "café frío", "soda", "infusión de frutas", "bebida de avena", "bebida de coco",
-        "ponche", "refresco de cola", "aguapanela", "horchata", "bebida de cebada"
+        "ponche", "refresco de cola", "aguapanela", "horchata", "bebida de cebada", "hatsu"
     ],
     "frutas": [
         "manzana", "pera", "banano", "piña", "naranja",
@@ -63,7 +59,7 @@ CATEGORIAS = {
         "jamón ahumado", "tocineta", "pierna de cerdo", "brazo de cerdo", "costilla de cerdo",
         "filete de res", "hígado de res", "riñón de res", "lengua de res", "salchicha de cerdo",
         "chorizo", "cabeza de cerdo", "manos de cerdo", "carne desmechada", "carne para sudar",
-        "churrasco", "panceta", "hamburguesa de res", "albóndigas de res", "rabo de res"
+        "churrasco", "panceta", "hamburguesa de res", "albóndigas de res", "rabo de res", "lomo"
     ],
     "carnes blancas": [
         "pechuga de pollo", "muslo de pollo", "alitas de pollo", "pierna pernil", "pollo entero",
@@ -72,7 +68,7 @@ CATEGORIAS = {
         "molida de pollo", "garras de pollo", "espinazo de pollo", "pollo al vacío", "pollo marinado",
         "pez tilapia", "filete de tilapia", "mojarra roja", "trucha", "salmón fresco",
         "atún fresco", "bagre", "filete de pescado", "pescado apanado", "pescado entero",
-        "bacalao", "sardina", "corvina", "camarones", "calamares",
+        "bacalao", "sardina", "corvina", "camarones", "calamares", "filete",
         "pulpitos", "langostinos", "anillos de calamar", "pescado ahumado", "filete de salmón"
     ],
     "ropa hombre": [
@@ -99,113 +95,27 @@ CATEGORIAS = {
         "bufanda", "pañuelo", "broche", "anillo", "llavero",
         "cartera", "diadema", "correa", "paraguas", "monedero"
     ],
-    "otros": []  # catch-all
-}
-
-
-# Función auxiliar para clasificar un producto por nombre
-def clasificar_producto(nombre):
-    nombre = nombre.lower()
-    for categoria, palabras in CATEGORIAS.items():
-        for palabra in palabras:
-            if palabra in nombre:
-                return categoria
-    return "otros"
-
-# Extraer fecha con expresiones regulares
-FECHA_REGEX = r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
-
-@router.post("/upload-factura")
-async def procesar_factura(file: UploadFile = File(...)):
-    # Leer imagen
-    image_bytes = await file.read()
-    image = Image.open(BytesIO(image_bytes))
-    image_np = np.array(image)
-
-    # Convertir a escala de grises y aplicar OCR
-    gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-    texto = pytesseract.image_to_string(gray, lang='spa')
-
-    # Buscar fecha
-    fecha_match = re.search(FECHA_REGEX, texto)
-    fecha = fecha_match.group(0) if fecha_match else "desconocida"
-
-    # Simular extracción de productos (en proyecto real usarías regexs o NLP)
-    lineas = texto.split("\n")
-    productos = []
-    for linea in lineas:
-        partes = linea.split()
-        if len(partes) >= 3:
-            try:
-                nombre = " ".join(partes[:-2])
-                cantidad = int(partes[-2])
-                precio_unitario = float(partes[-1].replace("$", "").replace(",", ""))
-                categoria = clasificar_producto(nombre)
-                productos.append({
-                    "producto": nombre,
-                    "cantidad": cantidad,
-                    "precio_unitario": precio_unitario,
-                    "precio_total": cantidad * precio_unitario,
-                    "categoria": categoria
-                })
-            except:
-                continue
-
-    return {
-        "factura": {
-            "fecha": fecha,
-            "proveedor": "por definir"  # Podrías inferirlo si detectas marcas como "Éxito", etc.
-        },
-        "items": productos
-    }
-
-
-'''
-# app/ocr.py
-
-from fastapi import APIRouter, UploadFile, File
-from typing import List
-import pytesseract
-import pandas as pd
-import cv2
-import numpy as np
-import re
-from io import BytesIO
-from PIL import Image
-
-router = APIRouter()
-
-# Diccionario de categorias para clasificar los productos
-CATEGORIAS = {
-    "lácteos": [...],  # Se omiten para brevedad
-    "aseo": [...],
-    "licores": [...],
-    "cosméticos": [...],
-    "bebida sin alcohol": [...],
-    "frutas": [...],
-    "verduras": [...],
-    "carnes rojas": [...],
-    "carnes blancas": [...],
-    "ropa hombre": [...],
-    "ropa mujer": [...],
-    "ropa infantil": [...],
-    "accesorios": [...],
     "otros": []
 }
+import unicodedata
+import re
 
-# Función auxiliar para clasificar un producto por nombre
+def normalizar(texto):
+    texto = texto.lower()
+    texto = unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode('utf-8')
+    texto = re.sub(r'[^a-z0-9]', '', texto)  # Elimina todo lo que no sea letra o número
+    return texto
+
 def clasificar_producto(nombre):
-    nombre = nombre.lower()
+    nombre_normalizado = normalizar(nombre)
     for categoria, palabras in CATEGORIAS.items():
         for palabra in palabras:
-            if palabra in nombre:
+            palabra_normalizada = normalizar(palabra)
+            if palabra_normalizada in nombre_normalizado:
                 return categoria
     return "otros"
 
-# Expresión regular para fecha
 FECHA_REGEX = r"(\d{2,4}[/-]\d{1,2}[/-]\d{1,2})"
-
-import traceback
 
 @router.post("/upload-factura")
 async def procesar_factura(file: UploadFile = File(...)):
@@ -213,43 +123,44 @@ async def procesar_factura(file: UploadFile = File(...)):
         image_bytes = await file.read()
         image = Image.open(BytesIO(image_bytes))
         image_np = np.array(image)
-
         gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-        texto = pytesseract.image_to_string(gray, lang='spa')
+        texto = pytesseract.image_to_string(gray)
 
-        print("=== TEXTO DETECTADO ===")
-        print(texto)
-        print("=======================")
+        print("=== OCR DETECTADO ===\n", texto)
 
         fecha_match = re.search(FECHA_REGEX, texto)
         fecha = fecha_match.group(0) if fecha_match else "desconocida"
 
         productos = []
         total = 0
-        ITEM_REGEX = re.compile(r"^(\d+)?\s*([A-ZÁÉÍÓÚÑ/\-\s]+?)\s*T?1?\s*\$?([\d,.]+)$")
 
         for linea in texto.split("\n"):
             linea = linea.strip()
-            print("Analizando línea:", linea)
-            match = ITEM_REGEX.match(linea)
-            if match:
-                try:
-                    cantidad_str, nombre, precio = match.groups()
-                    cantidad = int(cantidad_str) if cantidad_str else 1
-                    precio_total = float(precio.replace(".", "").replace(",", "."))
-                    precio_unitario = precio_total / cantidad
-                    categoria = clasificar_producto(nombre)
-                    productos.append({
-                        "producto": nombre.strip(),
-                        "cantidad": cantidad,
-                        "precio_unitario": round(precio_unitario, 2),
-                        "precio_total": round(precio_total, 2),
-                        "categoria": categoria
-                    })
-                    total += precio_total
-                except Exception as e:
-                    print("Error procesando producto:", e)
-                    continue
+            partes = linea.split()
+            if len(partes) < 4:
+                continue
+
+            try:
+                cantidad_str = partes[0]
+                nombre = " ".join(partes[2:-1])
+                precio_str = partes[-1]
+
+                cantidad = float(cantidad_str.replace(",", "."))
+                precio = float(precio_str.replace(".", "").replace(",", "."))
+                precio_unitario = precio / cantidad if cantidad != 0 else precio
+                categoria = clasificar_producto(nombre)
+
+                productos.append({
+                    "producto": nombre.strip(),
+                    "cantidad": cantidad,
+                    "precio_unitario": round(precio_unitario, 2),
+                    "precio_total": round(precio, 2),
+                    "categoria": categoria
+                })
+                total += precio
+            except Exception as e:
+                print(f"❌ Error analizando línea: {linea} -> {e}")
+                continue
 
         return {
             "factura": {
@@ -261,7 +172,6 @@ async def procesar_factura(file: UploadFile = File(...)):
         }
 
     except Exception as e:
-        print("ERROR GENERAL:", e)
+        print("❌ ERROR GENERAL:", e)
         traceback.print_exc()
         return {"error": "Error procesando la factura"}
-'''
